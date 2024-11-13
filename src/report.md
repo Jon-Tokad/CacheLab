@@ -1,0 +1,1 @@
+LRU is performing better because it takes into account blocks that havn't been used in a while, as opposed to random that could potentially be taking away blocks that are being used often. I did not implement TreeLRU but I'd image it performs worse than LRU but better than random. It would have much less overhead though. Prefetch was not implemented.

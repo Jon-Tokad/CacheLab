@@ -106,7 +106,7 @@ struct CacheSimulation
         TREELRU
         // tomato: Add your replacement policy here
     };
-    Policy policy = LRU;
+    Policy policy;
     ReplacementPolicy replacement_policy[64] = {};
     PrefetchRequest prefetch_queue[32] = {};
     Prefetcher prefetcher;
