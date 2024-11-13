@@ -8,6 +8,9 @@
 #include <cassert>
 #include "simulated_ints.h"
 
+void prefetchCache(CacheSimulation *cache, uintptr_t address);
+bool ownedByUser(CacheSimulation *cache, uintptr_t address);
+
 // We want an 32kB cache with 64B blocks
 // 32kB = 2^15B -> 2^15B / 64B = 2^9 blocks
 // 2^9 blocks / 8 = 2^6 sets
@@ -24,7 +27,8 @@ struct ReplacementPolicy
     // tomato: replacement policy bits will be here
     // you can check them by replacement_policy[set].your_bits
     // next line is a suggestion about how you can store bits for LRU
-    uint8_t usage[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    uint64_t usage[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    bool tree_lru_bits[7];
 };
 
 struct PrefetchRequest
@@ -98,6 +102,8 @@ struct CacheSimulation
     enum Policy
     {
         LRU,
+        RANDOM,
+        TREELRU
         // tomato: Add your replacement policy here
     };
     Policy policy = LRU;
@@ -116,8 +122,7 @@ void resetCacheStats();
 void printStats();
 uint64_t cacheAddress(CacheSimulation *cache, uintptr_t address);
 int writeCache(CacheSimulation *cache, uintptr_t address, int value);
-void prefetchCache(CacheSimulation *cache, uintptr_t address);
-bool ownedByUser(CacheSimulation *cache, uintptr_t address);
+
 
 void initBuffer(int_cached_buffer &buffer, int elem_count);
 struct matrix_mult_args

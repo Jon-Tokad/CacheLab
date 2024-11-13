@@ -1,5 +1,7 @@
 #include "cache.h"
 
+#include <cstring>
+
 static CacheSimulation common_sim;
 
 static void initCache(CacheSimulation *cache)
@@ -68,6 +70,8 @@ void printStats()
     // ratio : prefetched hits/all hits
     std::cout << "Ratio of prefetched hits/all hits : " << "tomato" << std::endl;
 }
+
+
 static void prefetchFromQueue(CacheSimulation *cache)
 {
     for (int i = 0; i < 32; i++)
@@ -131,10 +135,9 @@ uint64_t cacheAddress(CacheSimulation *cache, uintptr_t address)
         }
     }
     // align the address to 64 bytes
-    uintptr_t aligned_address = /*tomato*/ 0;
-
-    uint8_t set = /*tomato*/ 0;
-    uint64_t tag = /*tomato*/ 0;
+    uintptr_t aligned_address = address & ~((uintptr_t) 63); // allignment = block size
+    uint8_t set = (address >> 6) & 63; // index
+    uint64_t tag = address >> 12; // tag
     cache->reads++;
     bool hit = false;
     int i;
@@ -142,7 +145,7 @@ uint64_t cacheAddress(CacheSimulation *cache, uintptr_t address)
     // Hint: 8 is associativity.
     for (i = 0; i < 8; i++)
     {
-        if (/*tomato*/ false)
+        if (cache->cache[set][i].valid && cache->cache[set][i].tag == tag)
         {
             hit = true;
             cache->hits++;
@@ -153,28 +156,55 @@ uint64_t cacheAddress(CacheSimulation *cache, uintptr_t address)
     {
         cache->misses++;
         access_finishes = cache->current_time + 20;
-        i = 0;
+        i = -1;
+        int lru = 0;
+        uint64_t min_time = cache->replacement_policy[set].usage[lru];
+
         for (int j = 0; j < 8; j++)
         {
-            if (/*tomato*/ false)
+            if (!cache->cache[set][j].valid)
             {
                 i = j;
                 break;
             }
-            /*tomato: for more sophisticated replacements modify here*/
-            // switch(cache->policy)?
-            if (/*tomato, hint: replacement */ true)
+
+            if (cache->replacement_policy[set].usage[j] < min_time)
             {
-                i = j;
+                min_time = cache->replacement_policy[set].usage[j];
+                lru = j;
             }
         }
+
+        cache->replacement_policy[set].usage[lru] = cache->current_time;
+
+        if (i == -1) {    
+            // cache->policy = CacheSimulation::Policy::RANDOM;
+
+            switch(cache->policy) {
+                case CacheSimulation::Policy::LRU:
+                    i = lru;    
+                    break;
+                    
+                case CacheSimulation::Policy::RANDOM:
+                    i = rand() % 8;
+                    break;
+                    
+                case CacheSimulation::Policy::TREELRU:
+                    break;
+            }
+        }
+
         /*tomato: we are getting the base pointer into the cache*/
         // tomato: dont forget the other modifications to the block
         uint8_t *base_pointer = (uint8_t *)(aligned_address);
         for (int j = 0; j < 64; j++)
         {
             // tomato: copy here
+            cache->cache[set][i].data[j] = base_pointer[j];
         }
+
+        cache->cache[set][i].tag = tag;
+        cache->cache[set][i].valid = true;
         // tomato: we just used this so maybe replacement policy cares about this.
     }
     else
@@ -187,19 +217,26 @@ uint64_t cacheAddress(CacheSimulation *cache, uintptr_t address)
 
 int writeCache(CacheSimulation *cache, uintptr_t address, int value)
 {
+
+
     // writethrough
     *(int *)address = value;
     // align the address to 64 bytes
     // tomato: fill in the 0s.
-    uintptr_t aligned_address = 0;
-    uint8_t set = 0;
-    uint64_t tag = 0;
+    uintptr_t aligned_address = address & ~((uintptr_t) 63); // allignment = block size
+    uint8_t set = (address >> 6) & 63;
+    uint64_t tag = address >> 12;
+
+
     int i = 0;
     for (; i < 8; i++)
     {
-        if (/*tomato when do we write*/ false)
+        if (cache->cache[set][i].valid && cache->cache[set][i].tag == tag)
         {
             // tomato: write to cache
+            //cache->replacement_policy[set].usage[i] = cache->current_time;
+            int offset = (address & 63);
+            cache->cache[set][i].data[offset] = value;
             return value;
         }
     }
